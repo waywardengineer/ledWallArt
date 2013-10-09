@@ -1,8 +1,10 @@
 #include "Wire.h"
 #include <avr/pgmspace.h>
-const byte rOffset = 2;
-const byte gOffset = 0;
-const byte bOffset = 1;
+#define PCA9685_LED0_ON_L 0x6
+#define PCA9685_I2C_START_ADDR 0x40
+#define PCA9685_CONFIG_BYTE1 0b00100001
+#define PCA9685_CONFIG_BYTE2 0b00011001
+
 const byte sinCurve255[256] = {128, 131, 134, 137, 140, 143, 146, 149, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 182, 185, 188, 191, 194, 196, 199, 201, 204, 207, 209, 211, 214, 216, 218, 220, 223, 225, 227, 229, 231, 232, 234, 236, 238, 239, 241, 242, 243, 245, 246, 247, 248, 249, 250, 251, 252, 253, 253, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 254, 253, 253, 252, 251, 251, 250, 249, 248, 247, 245, 244, 243, 241, 240, 238, 237, 235, 233, 232, 230, 228, 226, 224, 222, 219, 217, 215, 213, 210, 208, 205, 203, 200, 198, 195, 192, 189, 187, 184, 181, 178, 175, 172, 169, 166, 163, 160, 157, 154, 151, 148, 145, 142, 139, 135, 132, 129, 127, 124, 121, 117, 114, 111, 108, 105, 102, 99, 96, 93, 90, 87, 84, 81, 78, 75, 72, 69, 67, 64, 61, 58, 56, 53, 51, 48, 46, 43, 41, 39, 37, 34, 32, 30, 28, 26, 24, 23, 21, 19, 18, 16, 15, 13, 12, 11, 9, 8, 7, 6, 5, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18, 20, 22, 24, 25, 27, 29, 31, 33, 36, 38, 40, 42, 45, 47, 49, 52, 55, 57, 60, 62, 65, 68, 71, 74, 76, 79, 82, 85, 88, 91, 94, 97, 100, 103, 107, 110, 113, 116, 119, 122, 125};
 const uint16_t sinCurve360[256] = {180, 184, 188, 193, 197, 202, 206, 210, 215, 219, 223, 228, 232, 236, 240, 244, 248, 252, 256, 260, 264, 268, 272, 276, 280, 283, 287, 290, 294, 297, 300, 304, 307, 310, 313, 316, 319, 321, 324, 327, 329, 332, 334, 336, 338, 340, 342, 344, 346, 347, 349, 350, 352, 353, 354, 355, 356, 357, 358, 358, 359, 359, 359, 359, 360, 359, 359, 359, 359, 358, 358, 357, 356, 355, 354, 353, 352, 350, 349, 347, 346, 344, 342, 340, 338, 336, 334, 332, 329, 327, 324, 321, 319, 316, 313, 310, 307, 304, 300, 297, 294, 290, 287, 283, 280, 276, 272, 268, 264, 260, 256, 252, 248, 244, 240, 236, 232, 228, 223, 219, 215, 210, 206, 202, 197, 193, 188, 184, 180, 176, 172, 167, 163, 158, 154, 150, 145, 141, 137, 132, 128, 124, 120, 116, 112, 108, 104, 100, 96, 92, 88, 84, 80, 77, 73, 70, 66, 63, 60, 56, 53, 50, 47, 44, 41, 39, 36, 33, 31, 28, 26, 24, 22, 20, 18, 16, 14, 13, 11, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 0, 1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13, 14, 16, 18, 20, 22, 24, 26, 28, 31, 33, 36, 39, 41, 44, 47, 50, 53, 56, 60, 63, 66, 70, 73, 77, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128, 132, 137, 141, 145, 150, 154, 158, 163, 167, 172, 176};
 byte rPin = 14;
@@ -22,6 +24,8 @@ void setup(){
 	Serial.begin(9600);
 }
 void loop(){
+	
+#ifdef TESTPATTERN
 	for (i=0; i<10; i++){
 		int hIndex = loopVal + i * 25;
 		hIndex = hIndex > 255 ? hIndex-255 : hIndex;
@@ -30,15 +34,14 @@ void loop(){
 	}
 	loopVal += 2;
 	loopVal = loopVal > 255 ? 0 : loopVal;
-	delay(50);
+#else
+
+#endif
 }
 
 void sendPwmCmd (uint8_t chipAddr, uint8_t ledAddr, uint16_t val){
-	#define LED0_ON_L 0x6
-	#define LED0_ON_L 0x6
-	#define I2C_START_ADDR 0x40
-	Wire.beginTransmission(chipAddr + I2C_START_ADDR);
-	Wire.write(LED0_ON_L+4*ledAddr);
+	Wire.beginTransmission(chipAddr + PCA9685_I2C_START_ADDR);
+	Wire.write(PCA9685_LED0_ON_L+4*ledAddr);
 	Wire.write(0); //on bit 0
 	Wire.write(0); //on bit 1
 	Wire.write(val); //off bit 0
@@ -48,14 +51,13 @@ void sendPwmCmd (uint8_t chipAddr, uint8_t ledAddr, uint16_t val){
 
 
 void setParams(uint8_t chipAddr) {
-	uint8_t config = 0b00100001;
-	sendByte(chipAddr, 0, config & 0x10); // sleep
+	sendByte(chipAddr, 0, PCA9685_CONFIG_BYTE1 & 0x10); // sleep
 	sendByte(chipAddr, 0xFE, 14); // set the prescaler
-	sendByte(chipAddr, 0, config);
-	sendByte(chipAddr, 1, 0b00011001);
+	sendByte(chipAddr, 0, PCA9685_CONFIG_BYTE1);
+	sendByte(chipAddr, 1, PCA9685_CONFIG_BYTE2);
 }
 void sendByte(uint8_t chipAddr, uint8_t regAddr, uint8_t data) {
-	Wire.beginTransmission(chipAddr + I2C_START_ADDR);
+	Wire.beginTransmission(chipAddr + PCA9685_I2C_START_ADDR);
 	Wire.write(regAddr);
 	Wire.write(data);
 	Wire.endTransmission();
@@ -67,17 +69,30 @@ void sendByte(uint8_t chipAddr, uint8_t regAddr, uint8_t data) {
 
 void writeLedColor(uint8_t arm, uint8_t ledIndex, uint16_t hsv[3])  { //hsv[0] hue, 0-360; hsv[1], 0-255; hsv[2], 0-255
 	uint16_t rgb[3];
-	uint16_t chipAddr = arm * 2;
-	uint16_t regaddr;
+	uint8_t chipAddr = arm * 2;
 	if (ledIndex > 4){
 		chipAddr++;
 		ledIndex -= 5;
 	}
+	chipAddr += PCA9685_I2C_START_ADDR;
 	ledIndex *= 3;
 	getRGB(hsv[0], hsv[1], hsv[2], rgb);
-	sendPwmCmd(chipAddr, ledIndex+rOffset, rgb[0]);
-	sendPwmCmd(chipAddr, ledIndex+gOffset, rgb[1]);
-	sendPwmCmd(chipAddr, ledIndex+bOffset, rgb[2]);
+	Wire.beginTransmission(chipAddr);
+	Wire.write(PCA9685_LED0_ON_L+4*ledIndex);
+	Wire.write(0); //on bit 0
+	Wire.write(0); //on bit 1
+	Wire.write(rgb[1]); //off bit 0
+	Wire.write(rgb[1]>>8); //off bit 1
+	Wire.write(0); //on bit 0
+	Wire.write(0); //on bit 1
+	Wire.write(rgb[2]); //off bit 0
+	Wire.write(rgb[2]>>8); //off bit 1
+	Wire.write(0); //on bit 0
+	Wire.write(0); //on bit 1
+	Wire.write(rgb[0]); //off bit 0
+	Wire.write(rgb[0]>>8); //off bit 1
+	Wire.endTransmission();
+
 	/*if (ledIndex  == 0 && chipAddr == 1){
 		Serial.println(hsv[0]);
 		Serial.println(hsv[1]);
