@@ -3,13 +3,17 @@
 #define PCA9685_LED0_ON_L 0x6
 #define PCA9685_I2C_START_ADDR 0x40
 #define PCA9685_CONFIG_BYTE1 0b00100001
-#define PCA9685_CONFIG_BYTE2 0b00011001
+#define PCA9685_CONFIG_BYTE2 0b00011101
 
 
-#define NUM_ARMS 1
+#define NUM_ARMS 3
 #define NUM_LEDS_PER_ARM 10
-#define KEYFRAMESPACING 1000
-#define NUM_PATTERN_LAYERS 2
+#define NUM_PATTERN_LAYERS 3
+#define KEYFRAMEVARIATIONFACTOR 1
+#define KEYFRAMEVARIATIONSTEPPING 10
+int keyFrameBaseSpacing = 1000;
+int keyFrameSpacing;
+uint16_t keyFrameCycleIndex = 0;
 const uint8_t dimCurve[256] PROGMEM = {
 		0,   1,   1,   2,   2,   2,   2,   2,   2,   3,   3,   3,   3,   3,   3,   3,
 		3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,   4,   4,   4,
@@ -28,9 +32,24 @@ const uint8_t dimCurve[256] PROGMEM = {
 		146, 149, 151, 154, 157, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 190,
 		193, 196, 200, 203, 207, 211, 214, 218, 222, 226, 230, 234, 238, 242, 248, 255,
 };
-
-const uint8_t sinCurve256[256] PROGMEM = {128, 131, 134, 137, 140, 143, 146, 149, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 182, 185, 188, 191, 194, 196, 199, 201, 204, 207, 209, 211, 214, 216, 218, 220, 223, 225, 227, 229, 231, 232, 234, 236, 238, 239, 241, 242, 243, 245, 246, 247, 248, 249, 250, 251, 252, 253, 253, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 254, 253, 253, 252, 251, 251, 250, 249, 248, 247, 245, 244, 243, 241, 240, 238, 237, 235, 233, 232, 230, 228, 226, 224, 222, 219, 217, 215, 213, 210, 208, 205, 203, 200, 198, 195, 192, 189, 187, 184, 181, 178, 175, 172, 169, 166, 163, 160, 157, 154, 151, 148, 145, 142, 139, 135, 132, 129, 127, 124, 121, 117, 114, 111, 108, 105, 102, 99, 96, 93, 90, 87, 84, 81, 78, 75, 72, 69, 67, 64, 61, 58, 56, 53, 51, 48, 46, 43, 41, 39, 37, 34, 32, 30, 28, 26, 24, 23, 21, 19, 18, 16, 15, 13, 12, 11, 9, 8, 7, 6, 5, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18, 20, 22, 24, 25, 27, 29, 31, 33, 36, 38, 40, 42, 45, 47, 49, 52, 55, 57, 60, 62, 65, 68, 71, 74, 76, 79, 82, 85, 88, 91, 94, 97, 100, 103, 107, 110, 113, 116, 119, 122, 125};
-
+const uint8_t sinCurve256[256] PROGMEM = {
+		128, 131, 134, 137, 140, 143, 146, 149, 152, 156, 159, 162, 165, 168, 171, 174, 
+		176, 179, 182, 185, 188, 191, 193, 196, 199, 201, 204, 206, 209, 211, 213, 216, 
+		218, 220, 222, 224, 226, 228, 230, 232, 234, 236, 237, 239, 240, 242, 243, 245, 
+		246, 247, 248, 249, 250, 251, 252, 252, 253, 254, 254, 255, 255, 255, 255, 255, 
+		256, 255, 255, 255, 255, 255, 254, 254, 253, 252, 252, 251, 250, 249, 248, 247, 
+		246, 245, 243, 242, 240, 239, 237, 236, 234, 232, 230, 228, 226, 224, 222, 220, 
+		218, 216, 213, 211, 209, 206, 204, 201, 199, 196, 193, 191, 188, 185, 182, 179, 
+		176, 174, 171, 168, 165, 162, 159, 156, 152, 149, 146, 143, 140, 137, 134, 131, 
+		128, 125, 122, 119, 116, 113, 110, 107, 104, 100, 97,  94,  91,  88,  85,  82,  
+		80,  77,  74,  71,  68,  65,  63,  60,  57,  55,  52,  50,  47,  45,  43,  40,  
+		38,  36,  34,  32,  30,  28,  26,  24,  22,  20,  19,  17,  16,  14,  13,  11,  
+		10,  9,   8,   7,   6,   5,   4,   4,   3,   2,   2,   1,   1,   1,   1,   1,   
+		0,   1,   1,   1,   1,   1,   2,   2,   3,   4,   4,   5,   6,   7,   8,   9,   
+		10,  11,  13,  14,  16,  17,  19,  20,  22,  24,  26,  28,  30,  32,  34,  36,  
+		38,  40,  43,  45,  47,  50,  52,  55,  57,  60,  63,  65,  68,  71,  74,  77,  
+		80,  82,  85,  88,  91,  94,  97,  100, 104, 107, 110, 113, 116, 119, 122, 125
+};
 const uint8_t ledOrdering[NUM_LEDS_PER_ARM] = {0, 4, 1, 2, 3, 5, 9, 6, 8, 7};
 typedef struct {
 	uint8_t strengthFactor; //relative intensity, 0-90
@@ -161,10 +180,10 @@ void calculateNextKeyFrame(){
 							hsv[armIndex][0] = val % 360;
 							val = (long) hsv[armIndex][1] * oldFactor + (long) thisHsv[1] * newFactor;
 							val /= dividingFactor;
-							hsv[armIndex][1] = val;
+							hsv[armIndex][1] = val % 256;
 							val = (long) hsv[armIndex][2] * oldFactor + (long) thisHsv[2] * newFactor;
 							val /= dividingFactor;
-							hsv[armIndex][2] = val;
+							hsv[armIndex][2] = val % 256;
 						}
 					}
 				}
@@ -181,7 +200,7 @@ void calculateNextKeyFrame(){
 		uint16_t val = (sinePatternLayers[patternIndex].currentTime + sinePatternLayers[patternIndex].timeStep) % 256;
 		sinePatternLayers[patternIndex].currentTime = val;
 	}
-	keyFrameExpiration = millis() + KEYFRAMESPACING;
+	keyFrameExpiration = millis() + keyFrameSpacing;
 }
 void shiftKeyFrames(){
 	Serial.println("begin shift frames");
@@ -208,15 +227,18 @@ uint16_t calculateSinVariation(uint16_t bottomValue, uint16_t topValue, uint8_t 
 
 
 void getRGB(uint16_t hue, uint8_t sat, uint8_t val, uint16_t colors[3]) { 
-
-
+	if (hue > 360 || sat > 255 || val > 255){
+		Serial.println("fuckup in");
+		Serial.println(hue);
+		Serial.println(sat);
+		Serial.println(val);
+	}
 
 	/* From http://www.kasperkamperman.com/blog/arduino/arduino-programming-hsb-to-rgb/
 		convert hue, saturation and brightness ( HSB/HSV ) to RGB
 		 The dim_curve is used only on brightness/value and on saturation (inverted).
 		 This looks the most natural.      
 	*/
-	//	Serial.println(val);
 	val = pgm_read_byte(&dimCurve[val]);
 	sat = 255 - pgm_read_byte(&dimCurve[255-sat]);
 	unsigned long r = 0;
@@ -229,7 +251,7 @@ void getRGB(uint16_t hue, uint8_t sat, uint8_t val, uint16_t colors[3]) {
 		colors[2]=val;  
 	} 
 	else  { 
-		base = ((255 - sat) * (val))/255;
+		base = ((long)(255 - sat) * (val))/255;
 		/*Serial.println(sat);
 		Serial.println(val);
 		Serial.println(base);*/
@@ -273,14 +295,20 @@ void getRGB(uint16_t hue, uint8_t sat, uint8_t val, uint16_t colors[3]) {
 				b = (((val-base)*(60-(hue%60)))/60)+base;
 			break;
 		}
+		if (r > 255 || g > 255 || b > 255){
+			Serial.println("fuckup out");
+			Serial.println(hue);
+			Serial.println(sat);
+			Serial.println(val);
+			Serial.println(base);
+			Serial.println(r);
+			Serial.println(g);
+			Serial.println(b);
+		}
+
 		colors[0]=r*16;
 		colors[1]=g*16;
 		colors[2]=b*16; 
-		/*Serial.println(hue/60);
-		Serial.println(r);
-		Serial.println(g);
-		Serial.println(b);
-		Serial.println("===");*/
 	}   
 
 }
@@ -319,26 +347,50 @@ void setup(){
 	sinePatternLayers[1].saturations[1] = 200;
 	sinePatternLayers[1].brightnesses[0] = 255;
 	sinePatternLayers[1].brightnesses[1] = 10;
+	
+	sinePatternLayers[2].strengthFactor = 90;
+	sinePatternLayers[2].timeStep = 105;
+	sinePatternLayers[2].phaseOffset = 0;
+	sinePatternLayers[2].positionVariance = 20;
+	sinePatternLayers[2].ledMask = 0b000000000000000011;
+	sinePatternLayers[2].armMask = 0b00000111;
+	sinePatternLayers[2].hues[0] = 0;
+	sinePatternLayers[2].hues[1] = 20;
+	sinePatternLayers[2].saturations[0] = 0;
+	sinePatternLayers[2].saturations[1] = 0;
+	sinePatternLayers[2].brightnesses[0] = 255;
+	sinePatternLayers[2].brightnesses[1] = 0;
 	for (i=0; i<3; i++){
 		calculateNextKeyFrame();
 	}
 }
 void loop(){
 	if (millis() > keyFrameExpiration){
+		keyFrameSpacing = keyFrameBaseSpacing + ((int)pgm_read_byte(&sinCurve256[keyFrameCycleIndex]) - 128) * KEYFRAMEVARIATIONFACTOR;
+		keyFrameCycleIndex += KEYFRAMEVARIATIONSTEPPING;
+		keyFrameCycleIndex = keyFrameCycleIndex % 256;
 		calculateNextKeyFrame();
+		Serial.println("keyFrameSpacing");
+		Serial.println(keyFrameCycleIndex);
+		Serial.println(keyFrameSpacing);
 	}
-	unsigned long frameAge = KEYFRAMESPACING - (keyFrameExpiration - millis());
+	unsigned long frameAge = keyFrameSpacing - (keyFrameExpiration - millis());
 	for (uint8_t armIndex = 0; armIndex < NUM_ARMS; armIndex++){
 		for (uint8_t ledIndex = 0; ledIndex < NUM_LEDS_PER_ARM; ledIndex++){
 			uint16_t rgb[3];
 			for (uint8_t colorIndex = 0; colorIndex < 3; colorIndex++){
 				long val = ((long)frames[1][armIndex][ledIndex][colorIndex] - frames[0][armIndex][ledIndex][colorIndex]);
 				val *= frameAge;
-				val /= KEYFRAMESPACING;
+				val /= keyFrameSpacing;
 				val += frames[0][armIndex][ledIndex][colorIndex];
-				/*if (ledIndex == 0){
-					Serial.print(val);
-					Serial.print(", ");
+				/*if (val < 0 or val > 4095){
+					Serial.println("fuckup");
+					Serial.println(ledIndex);
+					Serial.println(colorIndex);
+					Serial.println(frameAge);
+					Serial.println(frames[0][armIndex][ledIndex][colorIndex]);
+					Serial.println(frames[1][armIndex][ledIndex][colorIndex]);
+					Serial.println(val);
 				}*/
 				rgb[colorIndex] = val;
 			}
