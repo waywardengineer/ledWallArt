@@ -6,18 +6,37 @@
 #define PCA9685_CONFIG_BYTE2 0b00011001
 
 
-#define NUM_ARMS 3
+#define NUM_ARMS 1
 #define NUM_LEDS_PER_ARM 10
-#define KEYFRAMESPACING 2000
-#define NUM_PATTERN_LAYERS 1
+#define KEYFRAMESPACING 1000
+#define NUM_PATTERN_LAYERS 2
+const uint8_t dimCurve[256] PROGMEM = {
+		0,   1,   1,   2,   2,   2,   2,   2,   2,   3,   3,   3,   3,   3,   3,   3,
+		3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,   4,   4,   4,
+		4,   4,   4,   5,   5,   5,   5,   5,   5,   5,   5,   5,   5,   6,   6,   6,
+		6,   6,   6,   6,   6,   7,   7,   7,   7,   7,   7,   7,   8,   8,   8,   8,
+		8,   8,   9,   9,   9,   9,   9,   9,   10,  10,  10,  10,  10,  11,  11,  11,
+		11,  11,  12,  12,  12,  12,  12,  13,  13,  13,  13,  14,  14,  14,  14,  15,
+		15,  15,  16,  16,  16,  16,  17,  17,  17,  18,  18,  18,  19,  19,  19,  20,
+		20,  20,  21,  21,  22,  22,  22,  23,  23,  24,  24,  25,  25,  25,  26,  26,
+		27,  27,  28,  28,  29,  29,  30,  30,  31,  32,  32,  33,  33,  34,  35,  35,
+		36,  36,  37,  38,  38,  39,  40,  40,  41,  42,  43,  43,  44,  45,  46,  47,
+		48,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,
+		63,  64,  65,  66,  68,  69,  70,  71,  73,  74,  75,  76,  78,  79,  81,  82,
+		83,  85,  86,  88,  90,  91,  93,  94,  96,  98,  99,  101, 103, 105, 107, 109,
+		110, 112, 114, 116, 118, 121, 123, 125, 127, 129, 132, 134, 136, 139, 141, 144,
+		146, 149, 151, 154, 157, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 190,
+		193, 196, 200, 203, 207, 211, 214, 218, 222, 226, 230, 234, 238, 242, 248, 255,
+};
+
+const uint8_t sinCurve256[256] PROGMEM = {128, 131, 134, 137, 140, 143, 146, 149, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 182, 185, 188, 191, 194, 196, 199, 201, 204, 207, 209, 211, 214, 216, 218, 220, 223, 225, 227, 229, 231, 232, 234, 236, 238, 239, 241, 242, 243, 245, 246, 247, 248, 249, 250, 251, 252, 253, 253, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 254, 253, 253, 252, 251, 251, 250, 249, 248, 247, 245, 244, 243, 241, 240, 238, 237, 235, 233, 232, 230, 228, 226, 224, 222, 219, 217, 215, 213, 210, 208, 205, 203, 200, 198, 195, 192, 189, 187, 184, 181, 178, 175, 172, 169, 166, 163, 160, 157, 154, 151, 148, 145, 142, 139, 135, 132, 129, 127, 124, 121, 117, 114, 111, 108, 105, 102, 99, 96, 93, 90, 87, 84, 81, 78, 75, 72, 69, 67, 64, 61, 58, 56, 53, 51, 48, 46, 43, 41, 39, 37, 34, 32, 30, 28, 26, 24, 23, 21, 19, 18, 16, 15, 13, 12, 11, 9, 8, 7, 6, 5, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18, 20, 22, 24, 25, 27, 29, 31, 33, 36, 38, 40, 42, 45, 47, 49, 52, 55, 57, 60, 62, 65, 68, 71, 74, 76, 79, 82, 85, 88, 91, 94, 97, 100, 103, 107, 110, 113, 116, 119, 122, 125};
 
 const uint8_t ledOrdering[NUM_LEDS_PER_ARM] = {0, 4, 1, 2, 3, 5, 9, 6, 8, 7};
 typedef struct {
 	uint8_t strengthFactor; //relative intensity, 0-90
-	uint8_t timebase; //length for cycle
+	uint8_t timeStep; //how many steps of a cycle length of 255 to take per frame
 	uint8_t phaseOffset;
 	uint8_t positionVariance;
-	//uint8_t blending; // 0=no blending over space, 1=blending over space
 	uint16_t ledMask; //mask for which leds are affected by pattern
 	uint8_t armMask;
 	uint8_t currentTime;
@@ -36,44 +55,6 @@ byte bPin = 16;
 int val = 0;
 int i;
 int loopVal = 0;
-void setup(){
-	pinMode(rPin, OUTPUT);
-	pinMode(gPin, OUTPUT);  
-	pinMode(bPin, OUTPUT);  
-	digitalWrite(rPin, HIGH);
-	Wire.begin();
-	setParams(0);
-	setParams(1);
-	Serial.begin(9600);
-	sinePatternLayers[0].strengthFactor = 90;
-	sinePatternLayers[0].timebase = 30;
-	sinePatternLayers[0].phaseOffset = 0;
-	sinePatternLayers[0].positionVariance = 10;
-	sinePatternLayers[0].ledMask = 0b0000001111111111;
-	sinePatternLayers[0].hues[0] = 290;
-	sinePatternLayers[0].hues[1] = 320;
-	sinePatternLayers[0].saturations[0] = 200;
-	sinePatternLayers[0].saturations[1] = 200;
-	sinePatternLayers[0].brightnesses[0] = 255;
-	sinePatternLayers[0].brightnesses[1] = 200;
-	calculateNextKeyFrame();
-	calculateNextKeyFrame();
-}
-void loop(){
-	
-#ifdef TESTPATTERN
-	for (i=0; i<10; i++){
-		int hIndex = loopVal + i * 25;
-		hIndex = hIndex > 255 ? hIndex-255 : hIndex;
-		uint16_t hsv[3] = {sinCurve360[hIndex], 2000, 4095};
-		writeLedColor(0, i, hsv);
-	}
-	loopVal += 2;
-	loopVal = loopVal > 255 ? 0 : loopVal;
-#else
-
-#endif
-}
 
 void sendPwmCmd (uint8_t chipAddr, uint8_t ledAddr, uint16_t val){
 	Wire.beginTransmission(chipAddr + PCA9685_I2C_START_ADDR);
@@ -102,8 +83,7 @@ void sendByte(uint8_t chipAddr, uint8_t regAddr, uint8_t data) {
 
 
 
-
-void writeLedColor(uint8_t arm, uint8_t ledIndex, uint16_t hsv[3])  { //hsv[0] hue, 0-360; hsv[1], 0-255; hsv[2], 0-255
+void writeRGBColor(uint8_t arm, uint8_t ledIndex, uint16_t rgb[3])  { //hsv[0] hue, 0-360; hsv[1], 0-255; hsv[2], 0-255
 	uint8_t chipAddr = arm * 2;
 	if (ledIndex > 4){
 		chipAddr++;
@@ -111,7 +91,6 @@ void writeLedColor(uint8_t arm, uint8_t ledIndex, uint16_t hsv[3])  { //hsv[0] h
 	}
 	chipAddr += PCA9685_I2C_START_ADDR;
 	ledIndex *= 3;
-	getRGB(hsv[0], hsv[1], hsv[2], rgb);
 	Wire.beginTransmission(chipAddr);
 	Wire.write(PCA9685_LED0_ON_L+4*ledIndex);
 	Wire.write(0); //on bit 0
@@ -141,26 +120,51 @@ void writeLedColor(uint8_t arm, uint8_t ledIndex, uint16_t hsv[3])  { //hsv[0] h
 }
 void calculateNextKeyFrame(){
 	shiftKeyFrames();
-	for (ledIndex=0; ledIndex < NUM_LEDS_PER_ARM; ledIndex++){
-		uint16_t hsv[NUM_ARMS][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-		for (patternIndex=0; patternIndex < NUM_PATTERN_LAYERS; patternIndex++){
+	for (uint8_t ledIndex=0; ledIndex < NUM_LEDS_PER_ARM; ledIndex++){
+		uint16_t hsv[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+		for (uint8_t patternIndex=0; patternIndex < NUM_PATTERN_LAYERS; patternIndex++){
 			if (sinePatternLayers[patternIndex].strengthFactor > 0 && (sinePatternLayers[patternIndex].ledMask & (1 << ledIndex))){
-				uint16_t interval = (sinePatternLayers[patternIndex].currentTime + ledIndex * sinePatternLayers[patternIndex].positionVariance + sinePatternLayers[patternIndex].phaseOffset) % 255;
+				uint16_t interval = (sinePatternLayers[patternIndex].currentTime + ledIndex * sinePatternLayers[patternIndex].positionVariance + sinePatternLayers[patternIndex].phaseOffset) % 256;
 				uint16_t thisHsv[3] = {
-					calculateSin(sinePatternLayers[patternIndex].hues[0], sinePatternLayers[patternIndex].hues[1], interval),
-					calculateSin(sinePatternLayers[patternIndex].saturations[0], sinePatternLayers[patternIndex].saturations[1], interval),
-					calculateSin(sinePatternLayers[patternIndex].brightnesses[0], sinePatternLayers[patternIndex].brightnesses[1], interval)
+					calculateSinVariation(sinePatternLayers[patternIndex].hues[0], sinePatternLayers[patternIndex].hues[1], interval),
+					calculateSinVariation(sinePatternLayers[patternIndex].saturations[0], sinePatternLayers[patternIndex].saturations[1], interval),
+					calculateSinVariation(sinePatternLayers[patternIndex].brightnesses[0], sinePatternLayers[patternIndex].brightnesses[1], interval)
 				};
 				for (uint8_t armIndex = 0; armIndex < NUM_ARMS; armIndex++){
 					if (sinePatternLayers[patternIndex].armMask & (1<<armIndex)){
-						for (uint8_t colorIndex = 0; colorIndex < 3; colorIndex++){
-							if (patternIndex == 0){
+						if (patternIndex == 0){
+							for (uint8_t colorIndex = 0; colorIndex < 3; colorIndex++){
 								hsv[armIndex][colorIndex] = thisHsv[colorIndex];
 							}
-							else{
-								uint16_t val = (hsv[armIndex][colorIndex]*90 + thisHsv[colorIndex]*sinePatternLayers[patternIndex].strengthFactor)/180;
-								hsv[armIndex][colorIndex] = val;
+						}
+						else{
+							int diff = (int) thisHsv[0] - hsv[armIndex][0];
+							uint16_t oldHue;
+							uint16_t newHue;
+							if (diff < - 180){
+								oldHue = hsv[armIndex][0];
+								newHue = thisHsv[0] + 360;
 							}
+							else if (diff > 180){
+								oldHue = hsv[armIndex][0] + 360;
+								newHue = thisHsv[0];
+							}
+							else {
+								oldHue = hsv[armIndex][0];
+								newHue = thisHsv[0];
+							}
+							uint16_t oldFactor = 100 * hsv[armIndex][2];
+							uint16_t newFactor = sinePatternLayers[patternIndex].strengthFactor * thisHsv[2];
+							long dividingFactor = (oldFactor + newFactor);
+							long val = (long) oldHue * oldFactor + (long) newHue * newFactor;
+							val /= dividingFactor;
+							hsv[armIndex][0] = val % 360;
+							val = (long) hsv[armIndex][1] * oldFactor + (long) thisHsv[1] * newFactor;
+							val /= dividingFactor;
+							hsv[armIndex][1] = val;
+							val = (long) hsv[armIndex][2] * oldFactor + (long) thisHsv[2] * newFactor;
+							val /= dividingFactor;
+							hsv[armIndex][2] = val;
 						}
 					}
 				}
@@ -173,17 +177,37 @@ void calculateNextKeyFrame(){
 			}
 		}
 	}
+	for (uint8_t patternIndex=0; patternIndex < NUM_PATTERN_LAYERS; patternIndex++){
+		uint16_t val = (sinePatternLayers[patternIndex].currentTime + sinePatternLayers[patternIndex].timeStep) % 256;
+		sinePatternLayers[patternIndex].currentTime = val;
+	}
+	keyFrameExpiration = millis() + KEYFRAMESPACING;
+}
+void shiftKeyFrames(){
+	Serial.println("begin shift frames");
+	for (uint8_t armIndex = 0; armIndex < NUM_ARMS; armIndex++){
+		for (uint8_t ledIndex=0; ledIndex < NUM_LEDS_PER_ARM; ledIndex++){
+			for (uint8_t colorIndex = 0; colorIndex < 3; colorIndex++){
+				frames[0][armIndex][ledIndex][colorIndex] = frames[1][armIndex][ledIndex][colorIndex];
+				frames[1][armIndex][ledIndex][colorIndex] = frames[2][armIndex][ledIndex][colorIndex];
+				Serial.print(frames[0][armIndex][ledIndex][colorIndex]);
+				Serial.print(", ");
+			}
+			Serial.print(";");
+			
+		}
+		Serial.println ("arm");
+	}
+}
+uint16_t calculateSinVariation(uint16_t bottomValue, uint16_t topValue, uint8_t interval){
+	//Serial.println("calculateSinVariation");
+	long val = bottomValue + (((long) topValue-bottomValue) * pgm_read_byte(&sinCurve256[interval]))/256;
+	//Serial.println(val);
+	return val;
 }
 
-const uint16_t dim_curve[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 26, 27, 28, 30, 31, 32, 34, 35, 37, 38, 40, 41, 43, 44, 46, 48, 49, 51, 53, 55, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 79, 81, 83, 85, 88, 90, 93, 95, 98, 100, 103, 106, 108, 111, 114, 117, 120, 122, 125, 129, 132, 135, 138, 141, 145, 148, 152, 155, 159, 162, 166, 170, 174, 177, 181, 185, 190, 194, 198, 202, 207, 211, 216, 220, 225, 230, 235, 240, 245, 250, 255, 261, 266, 272, 277, 283, 289, 295, 301, 307, 313, 319, 326, 333, 339, 346, 353, 360, 367, 375, 382, 390, 397, 405, 413, 421, 429, 438, 446, 455, 464, 473, 482, 491, 501, 510, 520, 530, 540, 551, 561, 572, 583, 594, 605, 617, 629, 640, 653, 665, 677, 690, 703, 716, 730, 743, 757, 772, 786, 801, 816, 831, 846, 862, 878, 894, 911, 928, 945, 962, 980, 998, 1016, 1035, 1054, 1074, 1093, 1113, 1134, 1154, 1176, 1197, 1219, 1241, 1264, 1287, 1310, 1334, 1359, 1383, 1409, 1434, 1460, 1487, 1514, 1541, 1569, 1598, 1626, 1656, 1686, 1716, 1747, 1779, 1811, 1844, 1877, 1911, 1945, 1980, 2016, 2052, 2089, 2127, 2165, 2204, 2243, 2284, 2325, 2366, 2409, 2452, 2496, 2540, 2586, 2632, 2679, 2727, 2776, 2826, 2876, 2928, 2980, 3033, 3087, 3142, 3198, 3255, 3314, 3373, 3433, 3494, 3556, 3619, 3684, 3750, 3816, 3884, 3953, 4024, 4095};
-const uint8_t sinCurve255[256] = {128, 131, 134, 137, 140, 143, 146, 149, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 182, 185, 188, 191, 194, 196, 199, 201, 204, 207, 209, 211, 214, 216, 218, 220, 223, 225, 227, 229, 231, 232, 234, 236, 238, 239, 241, 242, 243, 245, 246, 247, 248, 249, 250, 251, 252, 253, 253, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 254, 253, 253, 252, 251, 251, 250, 249, 248, 247, 245, 244, 243, 241, 240, 238, 237, 235, 233, 232, 230, 228, 226, 224, 222, 219, 217, 215, 213, 210, 208, 205, 203, 200, 198, 195, 192, 189, 187, 184, 181, 178, 175, 172, 169, 166, 163, 160, 157, 154, 151, 148, 145, 142, 139, 135, 132, 129, 127, 124, 121, 117, 114, 111, 108, 105, 102, 99, 96, 93, 90, 87, 84, 81, 78, 75, 72, 69, 67, 64, 61, 58, 56, 53, 51, 48, 46, 43, 41, 39, 37, 34, 32, 30, 28, 26, 24, 23, 21, 19, 18, 16, 15, 13, 12, 11, 9, 8, 7, 6, 5, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18, 20, 22, 24, 25, 27, 29, 31, 33, 36, 38, 40, 42, 45, 47, 49, 52, 55, 57, 60, 62, 65, 68, 71, 74, 76, 79, 82, 85, 88, 91, 94, 97, 100, 103, 107, 110, 113, 116, 119, 122, 125};
 
-uint16_t calculateSin(uint16_t bottomValue, uint16_t topValue, uint8_t interval){
-	
-}
-
-
-void getRGB(uint16_t hue, uint16_t sat, uint16_t val, uint16_t colors[3]) { 
+void getRGB(uint16_t hue, uint8_t sat, uint8_t val, uint16_t colors[3]) { 
 
 
 
@@ -193,9 +217,8 @@ void getRGB(uint16_t hue, uint16_t sat, uint16_t val, uint16_t colors[3]) {
 		 This looks the most natural.      
 	*/
 	//	Serial.println(val);
-	val = interpolateDimTable(val);
-	sat = 4095 - interpolateDimTable(4095-sat);
-	
+	val = pgm_read_byte(&dimCurve[val]);
+	sat = 255 - pgm_read_byte(&dimCurve[255-sat]);
 	unsigned long r = 0;
 	unsigned long g = 0;
 	unsigned long b = 0;
@@ -206,7 +229,7 @@ void getRGB(uint16_t hue, uint16_t sat, uint16_t val, uint16_t colors[3]) {
 		colors[2]=val;  
 	} 
 	else  { 
-		base = (63 - sat/64) * (val/64);
+		base = ((255 - sat) * (val))/255;
 		/*Serial.println(sat);
 		Serial.println(val);
 		Serial.println(base);*/
@@ -250,9 +273,9 @@ void getRGB(uint16_t hue, uint16_t sat, uint16_t val, uint16_t colors[3]) {
 				b = (((val-base)*(60-(hue%60)))/60)+base;
 			break;
 		}
-		colors[0]=r;
-		colors[1]=g;
-		colors[2]=b; 
+		colors[0]=r*16;
+		colors[1]=g*16;
+		colors[2]=b*16; 
 		/*Serial.println(hue/60);
 		Serial.println(r);
 		Serial.println(g);
@@ -261,18 +284,71 @@ void getRGB(uint16_t hue, uint16_t sat, uint16_t val, uint16_t colors[3]) {
 	}   
 
 }
-uint16_t interpolateDimTable(uint16_t value){
-	uint8_t index = value >> 4;
-	uint16_t addOn = 0;
-	if (index < 255){
-		uint16_t interval = dim_curve[index + 1] - dim_curve[index];
-		addOn = (value % 16) * interval / 16;
+
+void setup(){
+	pinMode(rPin, OUTPUT);
+	pinMode(gPin, OUTPUT);  
+	pinMode(bPin, OUTPUT);  
+	digitalWrite(rPin, HIGH);
+	Wire.begin();
+	setParams(0);
+	setParams(1);
+	Serial.begin(9600);
+	sinePatternLayers[0].strengthFactor = 90;
+	sinePatternLayers[0].timeStep = 20;
+	sinePatternLayers[0].phaseOffset = 0;
+	sinePatternLayers[0].positionVariance = 10;
+	sinePatternLayers[0].ledMask = 0b0000001111111111;
+	sinePatternLayers[0].armMask = 0b00000111;
+	sinePatternLayers[0].hues[0] = 260;
+	sinePatternLayers[0].hues[1] = 320;
+	sinePatternLayers[0].saturations[0] = 200;
+	sinePatternLayers[0].saturations[1] = 200;
+	sinePatternLayers[0].brightnesses[0] = 255;
+	sinePatternLayers[0].brightnesses[1] = 10;
+	
+	sinePatternLayers[1].strengthFactor = 90;
+	sinePatternLayers[1].timeStep = 35;
+	sinePatternLayers[1].phaseOffset = 0;
+	sinePatternLayers[1].positionVariance = 20;
+	sinePatternLayers[1].ledMask = 0b0000001111000000;
+	sinePatternLayers[1].armMask = 0b00000111;
+	sinePatternLayers[1].hues[0] = 0;
+	sinePatternLayers[1].hues[1] = 20;
+	sinePatternLayers[1].saturations[0] = 200;
+	sinePatternLayers[1].saturations[1] = 200;
+	sinePatternLayers[1].brightnesses[0] = 255;
+	sinePatternLayers[1].brightnesses[1] = 10;
+	for (i=0; i<3; i++){
+		calculateNextKeyFrame();
 	}
-	else {
-		addOn = 0;
+}
+void loop(){
+	if (millis() > keyFrameExpiration){
+		calculateNextKeyFrame();
 	}
-	uint16_t result = dim_curve[index] + addOn;
-	return result;
+	unsigned long frameAge = KEYFRAMESPACING - (keyFrameExpiration - millis());
+	for (uint8_t armIndex = 0; armIndex < NUM_ARMS; armIndex++){
+		for (uint8_t ledIndex = 0; ledIndex < NUM_LEDS_PER_ARM; ledIndex++){
+			uint16_t rgb[3];
+			for (uint8_t colorIndex = 0; colorIndex < 3; colorIndex++){
+				long val = ((long)frames[1][armIndex][ledIndex][colorIndex] - frames[0][armIndex][ledIndex][colorIndex]);
+				val *= frameAge;
+				val /= KEYFRAMESPACING;
+				val += frames[0][armIndex][ledIndex][colorIndex];
+				/*if (ledIndex == 0){
+					Serial.print(val);
+					Serial.print(", ");
+				}*/
+				rgb[colorIndex] = val;
+			}
+			/*if (ledIndex == 0){
+				Serial.println("-");
+			}*/
+			writeRGBColor(armIndex, ledOrdering[ledIndex], rgb);
+			//Serial.println("writing LED");
+		}
+	}
 }
 
 
